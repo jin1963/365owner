@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>365df Owner Panel</title>
+
+  <style>
+    :root{
+      --bg:#0b0b0f; --card:#12121a; --muted:#a7a7b3; --text:#f1f1f6;
+      --gold:#d6b25e; --gold2:#9c7a2c; --line:#222235;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    .wrap{max-width:980px;margin:24px auto;padding:0 16px}
+    .hero{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+    h1{margin:0;font-size:28px;color:var(--gold)}
+    .sub{margin:4px 0 0;color:var(--muted)}
+    .btn{border:1px solid var(--line);background:#0f0f16;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer}
+    .btn.primary{border-color:rgba(214,178,94,.35);background:linear-gradient(180deg,#1a1a26,#0f0f16)}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
+    .row{display:flex;gap:12px;align-items:center;justify-content:space-between;border-bottom:1px dashed rgba(255,255,255,.08);padding:10px 0}
+    .row:last-child{border-bottom:none}
+    .label{color:var(--muted)}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:720px){.grid2{grid-template-columns:1fr}}
+    .kpi{border:1px solid var(--line);border-radius:14px;padding:12px;background:#0f0f16}
+    .kpiTitle{color:var(--muted);font-size:13px}
+    .kpiVal{margin-top:6px;font-size:18px;color:var(--gold)}
+    input{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#0f0f16;color:var(--text)}
+    .hint{color:var(--muted);font-size:13px;margin-top:8px}
+    .status{padding:12px;border-radius:14px;border:1px solid var(--line);background:#0f0f16}
+    .ok{color:#52d273}
+    .bad{color:#ff6b6b}
+    .warn{color:#ffcc66}
+  </style>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script defer src="./config.js"></script>
+  <script defer src="./owner.js"></script>
+</head>
+
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div>
+        <h1>365df Owner Panel</h1>
+        <p class="sub">BSC Mainnet • Vault/Staking Withdraw • Read Balances</p>
+      </div>
+      <button id="btnConnect" class="btn primary">Connect Wallet</button>
+    </header>
+
+    <section class="card">
+      <h2 style="margin:0 0 8px">Wallet</h2>
+      <div class="row"><div class="label">Address</div><div id="wallet" class="mono">-</div></div>
+      <div class="row"><div class="label">Network</div><div id="network" class="mono">-</div></div>
+      <div class="row"><div class="label">Owner (Vault)</div><div id="ownerVault" class="mono">-</div></div>
+      <div class="row"><div class="label">Owner (Staking)</div><div id="ownerStaking" class="mono">-</div></div>
+      <div class="hint mono" id="contractsLine">-</div>
+    </section>
+
+    <section class="card">
+      <h2 style="margin:0 0 8px">Vault (MLMVault)</h2>
+      <div class="grid2">
+        <div class="kpi">
+          <div class="kpiTitle">Vault USDT Balance</div>
+          <div id="kpiVaultUSDT" class="kpiVal">-</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiTitle">Vault DF Balance</div>
+          <div id="kpiVaultDF" class="kpiVal">-</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiTitle">depAutoUSDT()</div>
+          <div id="kpiDepAuto" class="kpiVal">-</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiTitle">USDT Decimals / DF Decimals</div>
+          <div id="kpiDecimals" class="kpiVal">-</div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px" class="grid2">
+        <div>
+          <div class="label" style="margin-bottom:8px">Withdraw depAutoUSDT → To</div>
+          <input id="wdToUSDT" placeholder="0x.... (ปลายทางรับ USDT)" />
+          <div class="hint">เรียก: MLMVault.withdrawDepAuto(to, amount)</div>
+        </div>
+        <div>
+          <div class="label" style="margin-bottom:8px">Amount (USDT)</div>
+          <input id="wdAmtUSDT" placeholder="เช่น 12.34" />
+          <div class="hint">ใส่เป็นหน่วย USDT ปกติ (ระบบจะ convert ตาม decimals)</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+        <button id="btnWithdrawDepAuto" class="btn primary" disabled>Withdraw depAuto USDT</button>
+        <button id="btnRefreshVault" class="btn" disabled>Refresh Vault</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 style="margin:0 0 8px">Staking (Staking365)</h2>
+      <div class="grid2">
+        <div class="kpi">
+          <div class="kpiTitle">Staking DF Balance</div>
+          <div id="kpiStakingDF" class="kpiVal">-</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiTitle">STAKE_DAYS</div>
+          <div id="kpiStakeDays" class="kpiVal">-</div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px" class="grid2">
+        <div>
+          <div class="label" style="margin-bottom:8px">Owner Withdraw DF → To</div>
+          <input id="wdToDF" placeholder="0x.... (ปลายทางรับ DF)" />
+          <div class="hint">เรียก: Staking365.ownerWithdrawDF(to, amount)</div>
+        </div>
+        <div>
+          <div class="label" style="margin-bottom:8px">Amount (DF)</div>
+          <input id="wdAmtDF" placeholder="เช่น 1000" />
+          <div class="hint">ใส่เป็นหน่วย DF ปกติ</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+        <button id="btnOwnerWithdrawDF" class="btn primary" disabled>Owner Withdraw DF</button>
+        <button id="btnRefreshStaking" class="btn" disabled>Refresh Staking</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 style="margin:0 0 8px">Status</h2>
+      <div id="status" class="status">Ready</div>
+    </section>
+  </div>
+</body>
+</html>
